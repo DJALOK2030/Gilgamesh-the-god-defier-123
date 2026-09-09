@@ -1,45 +1,15 @@
-/* NPC INTERACTION RUNTIME — contextual conversations without replacing the core quest flow */
+/* NPC INTERACTION RUNTIME — contextual conversations + optional side-quest hooks */
 (()=>{
  const lines={
   Citizen:['CITIZEN OF URUK','The king walks beyond the walls again. Whatever waits in the west, Uruk will remember your courage.'],
   Messenger:['THE MESSENGER','The western road is open, my king. Follow the signs, but trust neither every oracle nor every crown.'],
   'Western Envoy':['WESTERN ENVOY','The Aegean champions have heard your name. They await you beyond the camp.'],
  };
- let prompt='';
- function ensure(){
-  if(document.getElementById('interactionPrompt'))return;
-  const e=document.createElement('div');e.id='interactionPrompt';e.style.cssText='position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:9;padding:8px 14px;border:1px solid rgba(215,187,98,.5);background:rgba(10,8,6,.78);color:#f0d99c;font:600 12px Inter,Arial,sans-serif;letter-spacing:1px;border-radius:5px;pointer-events:none;opacity:0;transition:opacity .15s';document.body.appendChild(e);
- }
- function nearest(){
-  if(typeof npcs==='undefined'||typeof player==='undefined')return null;
-  let best=null,dist=5.5;
-  for(const n of npcs){if(!n||!n.visible)continue;const d=n.position.distanceTo(player.position);if(d<dist){dist=d;best=n}}
-  return best;
- }
- function say(n){
-  const key=n.userData&&n.userData.name||'';const data=lines[key];if(!data){msg('NO WORDS ARE NEEDED HERE');return}
-  if(typeof paused!=='undefined')paused=true;
-  if(typeof dialogueOpen!=='undefined')dialogueOpen=true;
-  const panel=document.getElementById('dialogue');if(!panel){msg(data[1]);paused=false;return}
-  document.getElementById('speaker').textContent=data[0];document.getElementById('dialogueTitle').textContent=key==='Messenger'?'The Western Warning':key==='Western Envoy'?'The Aegean Road':'Whispers of Uruk';document.getElementById('dialogueText').textContent=data[1];panel.classList.remove('hidden');
-  const next=document.getElementById('dialogueNext');const old=next.onclick;next.onclick=()=>{panel.classList.add('hidden');dialogueOpen=false;paused=false;next.onclick=old};
- }
+ function ensure(){if(document.getElementById('interactionPrompt'))return;const e=document.createElement('div');e.id='interactionPrompt';e.style.cssText='position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:9;padding:8px 14px;border:1px solid rgba(215,187,98,.5);background:rgba(10,8,6,.78);color:#f0d99c;font:600 12px Inter,Arial,sans-serif;letter-spacing:1px;border-radius:5px;pointer-events:none;opacity:0;transition:opacity .15s';document.body.appendChild(e)}
+ function nearest(){if(typeof npcs==='undefined'||typeof player==='undefined')return null;let best=null,dist=5.5;for(const n of npcs){if(!n||!n.visible)continue;const d=n.position.distanceTo(player.position);if(d<dist){dist=d;best=n}}return best}
+ function say(n){const key=n.userData&&n.userData.name||'';const data=lines[key];if(!data){msg('NO WORDS ARE NEEDED HERE');return}if(typeof paused!=='undefined')paused=true;if(typeof dialogueOpen!=='undefined')dialogueOpen=true;const panel=document.getElementById('dialogue');if(!panel){msg(data[1]);paused=false;return}document.getElementById('speaker').textContent=data[0];document.getElementById('dialogueTitle').textContent=key==='Messenger'?'The Western Warning':key==='Western Envoy'?'The Aegean Road':'Whispers of Uruk';document.getElementById('dialogueText').textContent=data[1];panel.classList.remove('hidden');const next=document.getElementById('dialogueNext');const old=next.onclick;next.onclick=()=>{panel.classList.add('hidden');dialogueOpen=false;paused=false;next.onclick=old}}
  const original=window.interact;
- window.interact=function(){
-  if(typeof paused!=='undefined'&&paused)return;
-  const n=nearest();
-  if(n){
-   const name=n.userData&&n.userData.name;
-   if(name==='Messenger'&&typeof state!=='undefined'&&state.quest===2){if(typeof original==='function')return original();}
-   if(name==='Western Envoy'&&typeof state!=='undefined'&&state.quest===6){if(typeof original==='function')return original();}
-   say(n);return;
-  }
-  if(typeof original==='function')return original();
- };
- function tick(){
-  if(typeof paused!=='undefined'&&paused){const e=document.getElementById('interactionPrompt');if(e)e.style.opacity='0';return}
-  ensure();const e=document.getElementById('interactionPrompt'),n=nearest();if(!e)return;
-  if(n){e.textContent='E · SPEAK WITH '+String(n.userData.name||'TRAVELER').toUpperCase();e.style.opacity='1';}else e.style.opacity='0';
- }
+ window.interact=function(){if(typeof paused!=='undefined'&&paused)return;const n=nearest();if(n){const name=n.userData&&n.userData.name;if(name==='Citizen'&&window.GilgameshSideQuests&&typeof state!=='undefined'&&state.quest<4){if(window.GilgameshSideQuests.accept('citizen_1'))return}if(name==='Messenger'&&typeof state!=='undefined'&&state.quest===2){if(typeof original==='function')return original()}if(name==='Western Envoy'&&typeof state!=='undefined'&&state.quest===6){if(typeof original==='function')return original()}say(n);return}if(typeof original==='function')return original()};
+ function tick(){if(typeof paused!=='undefined'&&paused){const e=document.getElementById('interactionPrompt');if(e)e.style.opacity='0';return}ensure();const e=document.getElementById('interactionPrompt'),n=nearest();if(!e)return;if(n){const name=String(n.userData&&n.userData.name||'TRAVELER').toUpperCase();e.textContent='E · '+(name==='CITIZEN'?'ASK ABOUT URUK':'SPEAK WITH '+name);e.style.opacity='1'}else e.style.opacity='0'}
  setInterval(tick,120);window.GilgameshInteraction={nearest,say};
 })();
