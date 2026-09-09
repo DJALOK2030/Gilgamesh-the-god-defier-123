@@ -22,7 +22,7 @@
  }
  function telegraph(e,active){
   const r=ringFor(e);r.visible=active;r.position.set(e.position.x,.045,e.position.z);
-  if(active){const s=settings[roleFor(e)];r.scale.setScalar(1.15);r.material.opacity=.45+.35*Math.abs(Math.sin(performance.now()/90));r.userData.range=s.range}
+  if(active){r.scale.setScalar(1.15);r.material.opacity=.45+.35*Math.abs(Math.sin(performance.now()/90))}
  }
  function hit(e,s){
   if(typeof window.GilgameshCombat?.damagePlayer==='function')window.GilgameshCombat.damagePlayer(s.damage);
@@ -35,16 +35,16 @@
    if(!e||!e.visible||!e.userData||e.userData.hp<=0||boss(e))continue;
    const role=roleFor(e),s=settings[role];
    e.userData.cooldown=Math.max(0,(Number(e.userData.cooldown)||0)-dt);
-   e.userData.attackAt=Math.max(0,(Number(e.userData.attackAt)||0)-dt);
+   const previousAttack=Number(e.userData.attackAt)||0;
+   e.userData.attackAt=Math.max(0,previousAttack-dt);
    const d=e.position.distanceTo(player.position);
-   const active=d<16;
-   if(!active){telegraph(e,false);continue}
+   if(d>=16){telegraph(e,false);continue}
    const dir=player.position.clone().sub(e.position);dir.y=0;
    if(dir.lengthSq()>0)dir.normalize();
    e.lookAt(player.position.x,e.position.y,player.position.z);
-   if(e.userData.attackAt>0){
+   if(previousAttack>0){
     telegraph(e,true);
-    if(e.userData.attackAt<=0)hit(e,s);
+    if(e.userData.attackAt===0)hit(e,s);
     continue;
    }
    telegraph(e,false);
@@ -56,7 +56,6 @@
    if(d<=s.range&&e.userData.cooldown<=0){e.userData.attackAt=s.windup;telegraph(e,true)}
   }
  }
- // Replace the legacy enemy updater so each ordinary foe has one authoritative attack path.
  window.updateEnemies=ai;
  window.GilgameshCombatAI={refresh:()=>ai(.016),roleFor};
 })();
