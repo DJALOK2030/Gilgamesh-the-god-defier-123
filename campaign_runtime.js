@@ -17,7 +17,6 @@
   const el=document.querySelector('.chapter');
   if(el&&el.textContent!==ch)el.textContent=ch;
   if(q!==lastQuest){
-   if(lastQuest>=0&&window.GilgameshSave?.save)window.GilgameshSave.save();
    lastQuest=q;
    if(window.GilgameshSave?.save)window.GilgameshSave.save();
   }
@@ -26,4 +25,7 @@
  setInterval(tick,350);
  setTimeout(tick,500);
  window.GilgameshCampaignRuntime={chapterFor,tick};
+ // Combat runtime is loaded here as a compatibility fallback so it remains active even if
+ // an older cached index.html has not yet listed combat_runtime.js.
+ setTimeout(()=>{if(!window.GilgameshCombat){const s=document.createElement('script');s.src='combat_runtime.js';s.onload=()=>window.GilgameshCombat?.refresh();document.body.appendChild(s)}},700);
 })();
