@@ -1,7 +1,7 @@
 /* UNIFIED CHRONICLE SAVE — one validated snapshot for gameplay and progression */
 (()=>{
- const KEY='gilgamesh-unified-save',VERSION=2;
- const SUBKEYS=['gilgamesh-save','gilgamesh-equipment','gilgamesh-equipped','gilgamesh-inventory','gilgamesh-achievements','gilgamesh-campaign','gilgamesh-trial','gilgamesh-ending'];
+ const KEY='gilgamesh-unified-save',VERSION=3;
+ const SUBKEYS=['gilgamesh-save','gilgamesh-equipment','gilgamesh-equipped','gilgamesh-inventory','gilgamesh-achievements','gilgamesh-campaign','gilgamesh-trial','gilgamesh-ending','gilgamesh-sidequests'];
  const clone=v=>JSON.parse(JSON.stringify(v));
  const num=(v,d)=>Number.isFinite(Number(v))?Number(v):d;
  function snapshot(){
@@ -13,6 +13,7 @@
   if(window.GilgameshAchievements)s.achievements=clone(window.GilgameshAchievements.unlocked);
   if(window.GilgameshCampaign)s.campaign=clone(window.GilgameshCampaign.data);
   if(window.GilgameshTrial?.state)s.trial=clone(window.GilgameshTrial.state);
+  if(window.GilgameshSideQuests?.data)s.sidequests=clone(window.GilgameshSideQuests.data);
   s.ending=localStorage.getItem('gilgamesh-ending')||null;
   return s;
  }
@@ -24,9 +25,10 @@
   if(s.achievements)localStorage.setItem('gilgamesh-achievements',JSON.stringify(s.achievements));
   if(s.campaign)localStorage.setItem('gilgamesh-campaign',JSON.stringify(s.campaign));
   if(s.trial)localStorage.setItem('gilgamesh-trial',JSON.stringify(s.trial));
+  if(s.sidequests)localStorage.setItem('gilgamesh-sidequests',JSON.stringify(s.sidequests));
  }
  function save(){try{const s=snapshot();localStorage.setItem(KEY,JSON.stringify(s));mirror(s);if(typeof msg==='function')msg('CHRONICLE SAVED · ALL PROGRESS SECURED');return true}catch(e){if(typeof msg==='function')msg('SAVE FAILED · STORAGE ERROR');return false}}
- function valid(s){return !!(s&&[1,2].includes(s.version)&&s.state&&typeof s.state==='object')}
+ function valid(s){return !!(s&&[1,2,3].includes(s.version)&&s.state&&typeof s.state==='object')}
  function restoreObject(target,source){if(!target||!source)return;for(const k of Object.keys(target))delete target[k];Object.assign(target,clone(source))}
  function sanitize(){
   state.level=Math.max(1,Math.floor(num(state.level,1)));state.xp=clamp(num(state.xp,0),0,99);state.wrath=clamp(num(state.wrath,0),0,100);state.kills=Math.max(0,Math.floor(num(state.kills,0)));state.coins=Math.max(0,Math.floor(num(state.coins,0)));state.quest=Math.max(0,Math.floor(num(state.quest,0)));state.maxHp=Math.max(100,num(state.maxHp,100));state.hp=clamp(num(state.hp,state.maxHp),0,state.maxHp);if(!state.skills)state.skills={};for(const k of ['might','guard','agility','will','royal'])state.skills[k]=clamp(Math.floor(num(state.skills[k],0)),0,3);
@@ -42,6 +44,7 @@
   if(s.achievements&&window.GilgameshAchievements)restoreObject(window.GilgameshAchievements.unlocked,s.achievements);
   if(s.campaign&&window.GilgameshCampaign)restoreObject(window.GilgameshCampaign.data,s.campaign);
   if(s.trial&&window.GilgameshTrial?.state)restoreObject(window.GilgameshTrial.state,s.trial);
+  if(s.sidequests&&window.GilgameshSideQuests?.data)restoreObject(window.GilgameshSideQuests.data,s.sidequests);
   if(s.equipped&&window.GilgameshEquipmentRuntime?.restore)window.GilgameshEquipmentRuntime.restore(s.equipped);
   if(s.ending)localStorage.setItem('gilgamesh-ending',s.ending);else localStorage.removeItem('gilgamesh-ending');
   mirror(snapshot());
