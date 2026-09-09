@@ -1,0 +1,109 @@
+(() => {
+  let boss = null;
+  let bossSpawned = false;
+  let bossDefeated = false;
+  let bossCooldown = 2.5;
+  let bossBanner = null;
+
+  function addBossHud() {
+    if ($('bossHud')) return;
+    const el = document.createElement('div');
+    el.id = 'bossHud';
+    el.className = 'boss-hud hidden';
+    el.innerHTML = '<div class="boss-name">CHAMPION OF THE WEST</div><div class="boss-bar"><i id="bossFill"></i></div><div id="bossText">260 / 260</div>';
+    document.body.appendChild(el);
+  }
+
+  function banner(text) {
+    if (!bossBanner) {
+      bossBanner = document.createElement('div');
+      bossBanner.id = 'bossBanner';
+      document.body.appendChild(bossBanner);
+    }
+    bossBanner.textContent = text;
+    bossBanner.classList.add('show');
+    clearTimeout(banner.t);
+    banner.t = setTimeout(() => bossBanner.classList.remove('show'), 2600);
+  }
+
+  function makeBoss() {
+    const g = new T.Group();
+    const armor = new T.Mesh(new T.CapsuleGeometry(1.25, 2.2, 6, 12), mat(0x35404f, .35));
+    armor.position.y = 2.4;
+    armor.castShadow = true;
+    g.add(armor);
+    const head = new T.Mesh(new T.SphereGeometry(.72, 16, 12), mat(0x8b674f));
+    head.position.y = 4.25;
+    head.castShadow = true;
+    g.add(head);
+    const crest = box(1.7, .32, 1.3, 0x9d7a36, .45);
+    crest.position.y = 4.85;
+    g.add(crest);
+    const weapon = box(.25, 3.5, .45, 0x9fa7b0, .8);
+    weapon.position.set(1.35, 2.3, .15);
+    weapon.rotation.z = -.18;
+    g.add(weapon);
+    g.position.set(0, 0, -30);
+    g.userData = { hp:260, maxHp:260, cool:2.2, isBoss:true, home:new T.Vector3(0,0,-30) };
+    scene.add(g);
+    enemies.push(g);
+    return g;
+  }
+
+  function spawnBoss() {
+    if (bossSpawned || bossDefeated || state.quest < 3) return;
+    bossSpawned = true;
+    boss = makeBoss();
+    addBossHud();
+    $('bossHud').classList.remove('hidden');
+    banner('A CHAMPION ANSWERS THE KING');
+    msg('NEW OBJECTIVE · DEFEAT THE CHAMPION');
+    setQuest('Defeat the Champion of the West.');
+  }
+
+  function updateBoss() {
+    if (!boss || !boss.visible || boss.userData.hp <= 0 || paused || dialogueOpen) return;
+    const dt = Math.min(clock.getDelta(), .05);
+    const d = boss.position.distanceTo(player.position);
+    boss.userData.cool -= dt;
+    if (d < 18) {
+      const dir = player.position.clone().sub(boss.position);
+      dir.y = 0;
+      if (dir.lengthSq()) dir.normalize();
+      if (d > 4.2) boss.position.addScaledVector(dir, dt * 2.7);
+      else if (boss.userData.cool <= 0) {
+        boss.userData.cool = 1.7;
+        if (!block && dodgeTimer <= 0) {
+          state.hp = Math.max(0, state.hp - 14);
+          msg('THE CHAMPION STRIKES');
+        } else if (block) {
+          state.wrath = clamp(state.wrath + 16 + state.skills.will * 2, 0, 100);
+          msg('GUARD HOLDS · WRATH +');
+        }
+      }
+      boss.lookAt(player.position.x, boss.position.y, player.position.z);
+    }
+    const fill = $('bossFill');
+    if (fill) fill.style.width = (boss.userData.hp / boss.userData.maxHp * 100) + '%';
+    const text = $('bossText');
+    if (text) text.textContent = Math.max(0, Math.ceil(boss.userData.hp)) + ' / ' + boss.userData.maxHp;
+  }
+
+  function monitor() {
+    if (state.quest === 3 && !bossSpawned) spawnBoss();
+    if (bossSpawned && boss && boss.userData.hp <= 0 && !bossDefeated) {
+      bossDefeated = true;
+      if ($('bossHud')) $('bossHud').classList.add('hidden');
+      state.quest = 4;
+      state.xp += 100;
+      checkLevel();
+      setQuest('Chapter I complete · A greater power stirs beyond Uruk.');
+      banner('THE CHAMPION HAS FALLEN');
+      msg('CHAMPION DEFEATED · XP +100');
+    }
+    updateBoss();
+  }
+
+  addBossHud();
+  setInterval(monitor, 80);
+})();
