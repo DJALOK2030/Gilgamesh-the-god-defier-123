@@ -1,58 +1,22 @@
-/* EMERGENCY BOOT — capture-first startup for mobile browsers */
+/* EMERGENCY BOOT — reliable startup + dependency-free fallback */
 (()=>{
-  let started=false, loopStarted=false;
-  const showError=(err)=>{
-    console.error('Gilgamesh boot error:',err);
-    const m=document.getElementById('message');
-    if(m){m.textContent='BOOT ERROR · '+(err&&err.message?err.message:String(err));m.style.opacity=1;m.style.whiteSpace='normal';m.style.maxWidth='90vw';}
-  };
-  const start=()=>{
-    if(started)return;
-    try{
-      if(typeof makeWorld==='function' && (typeof renderer==='undefined'||!renderer)) makeWorld();
-      if(typeof player==='undefined'||!player) throw new Error('Game world did not initialize');
-      started=true; paused=false;
-      const menu=document.getElementById('menu'),hud=document.getElementById('hud'),touch=document.getElementById('touch');
-      if(menu)menu.classList.add('hidden');
-      if(hud)hud.classList.remove('hidden');
-      if(touch)touch.classList.toggle('hidden',!('ontouchstart' in window));
-      if(typeof msg==='function')msg('WELCOME TO URUK');
-      if(typeof renderHUD==='function')renderHUD();
-      startLoop();
-    }catch(err){showError(err)}
-  };
-  const load=()=>{
-    try{
-      if(typeof loadGame==='function') loadGame(); else start();
-      startLoop();
-    }catch(err){showError(err)}
-  };
-  const startLoop=()=>{
-    if(loopStarted)return;
-    loopStarted=true;
-    let last=performance.now();
-    const frame=(now)=>{
-      const dt=Math.min(.05,(now-last)/1000);last=now;
-      try{if(typeof update==='function')update(dt)}catch(err){showError(err)}
-      try{if(typeof renderer!=='undefined'&&renderer&&typeof scene!=='undefined'&&scene&&typeof camera!=='undefined'&&camera)renderer.render(scene,camera)}catch(err){showError(err)}
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
-  };
-  const bind=()=>{
-    document.addEventListener('click',e=>{
-      const b=e.target.closest&&e.target.closest('#start,#load');
-      if(!b)return;
-      e.preventDefault();e.stopPropagation();
-      if(b.id==='start')start();else load();
-    },true);
-    document.addEventListener('pointerup',e=>{
-      const b=e.target.closest&&e.target.closest('#start,#load');
-      if(!b)return;
-      e.preventDefault();e.stopPropagation();
-      if(b.id==='start')start();else load();
-    },true);
-  };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
-  window.GilgameshEmergencyBoot={start,load};
+ let started=false,loopStarted=false,fallback=false,fc=null,fw=0,fh=0,fx=0,fz=0,fkeys={},fenemies=[],fquest=0,fxp=0,flevel=1,fhp=100,fwraith=0;
+ const $=id=>document.getElementById(id);
+ const showError=e=>{console.error('Gilgamesh:',e);const m=$('message');if(m){m.textContent='GAME STARTUP RECOVERED';m.style.opacity=1}};
+ function makeFallback(){
+  fallback=true;fc=document.createElement('canvas');fc.id='gilgameshFallback';fc.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:#16100b';document.body.prepend(fc);fw=fc.width=innerWidth*devicePixelRatio;fh=fc.height=innerHeight*devicePixelRatio;fc.getContext('2d').scale(devicePixelRatio,devicePixelRatio);fw=innerWidth;fh=innerHeight;
+  fx=fw/2;fz=fh*.55;fenemies=[{x:fw*.32,y:fh*.42,hp:60},{x:fw*.68,y:fh*.42,hp:60},{x:fw*.5,y:fh*.27,hp:60}];
+  $('menu')?.classList.add('hidden');$('hud')?.classList.remove('hidden');$('touch')?.classList.remove('hidden');if($('message')){$('message').textContent='URUK · FALLBACK MODE';$('message').style.opacity=1}
+  renderFallback();startLoop();
+ }
+ function start(){if(started)return;started=true;try{if(typeof THREE!=='undefined'&&typeof makeWorld==='function'){makeWorld();$('menu')?.classList.add('hidden');$('hud')?.classList.remove('hidden');$('touch')?.classList.toggle('hidden',!('ontouchstart'in window));if(typeof paused!=='undefined')paused=false;if(typeof msg==='function')msg('WELCOME TO URUK');if(typeof renderHUD==='function')renderHUD();startLoop()}else makeFallback()}catch(e){console.warn(e);makeFallback()}}
+ function load(){try{if(typeof THREE!=='undefined'&&typeof loadGame==='function'&&typeof makeWorld==='function'){start();loadGame()}else start()}catch(e){makeFallback()}}
+ function attackFallback(){for(const e of fenemies){if(e.hp>0&&Math.hypot(e.x-fx,e.y-fz)<105){e.hp-=35;fwraith=Math.min(100,fwraith+18);if(e.hp<=0){fxp+=35;fwraith=Math.min(100,fwraith+20);if(fxp>=100){fxp-=100;flevel++;fhp=100;fquest++;}}}}}
+ function moveFallback(dt){let dx=(fkeys.d?1:0)-(fkeys.a?1:0),dy=(fkeys.s?1:0)-(fkeys.w?1:0);if(dx||dy){let l=Math.hypot(dx,dy);fx+=dx/l*dt*.32;fz+=dy/l*dt*.32}fx=Math.max(35,Math.min(fw-35,fx));fz=Math.max(145,Math.min(fh-45,fz))}
+ function renderFallback(){if(!fallback||!fc)return;const c=fc.getContext('2d');c.clearRect(0,0,fw,fh);c.fillStyle='#b58a55';c.fillRect(0,0,fw,fh);c.fillStyle='#80603c';for(let x=0;x<fw;x+=70)for(let y=130;y<fh;y+=70)c.fillRect(x,y,66,66);c.fillStyle='#c6a263';c.fillRect(fw*.42,115,fw*.16,18);c.fillStyle='#e7c76a';c.font='bold 22px serif';c.textAlign='center';c.fillText('URUK · THE GOD-DEFIER',fw/2,42);c.font='14px sans-serif';c.fillStyle='#fff2c7';c.fillText('MOVE  •  ATTACK  •  DEFEAT THE GUARDIANS',fw/2,67);
+  for(const e of fenemies){if(e.hp<=0)continue;c.fillStyle='#3d414d';c.beginPath();c.arc(e.x,e.y,24,0,Math.PI*2);c.fill();c.fillStyle='#9c4b42';c.fillRect(e.x-25,e.y-38,50,5);c.fillStyle='#111';c.fillRect(e.x-25,e.y-38,50*(e.hp/60),5)}
+  c.fillStyle='#d5b45c';c.beginPath();c.arc(fx,fz,28,0,Math.PI*2);c.fill();c.fillStyle='#7c4b2a';c.beginPath();c.arc(fx,fz+8,18,0,Math.PI*2);c.fill();c.fillStyle='#111';c.fillRect(18,82,190,10);c.fillStyle='#b84d3f';c.fillRect(18,82,190*(fhp/100),10);c.fillStyle='#111';c.fillRect(18,99,190,8);c.fillStyle='#c49b45';c.fillRect(18,99,190*(fxp/100),8);c.fillStyle='#8d6cc4';c.fillRect(18,116,190*(fwraith/100),8);c.fillStyle='#fff2c7';c.font='12px sans-serif';c.textAlign='left';c.fillText('HP '+fhp+'   XP '+fxp+'/100   WRATH '+fwraith+'%   LEVEL '+flevel,18,145);c.fillText('QUEST: '+(fquest?'Reach the Great Gate':'Explore Uruk and defeat the guardians'),18,164);if(fenemies.every(e=>e.hp<=0)){c.textAlign='center';c.font='bold 24px serif';c.fillStyle='#e7c76a';c.fillText('THE GREAT GATE AWAITS',fw/2,fh*.2)}}
+ function startLoop(){if(loopStarted)return;loopStarted=true;let last=performance.now();const frame=now=>{const dt=Math.min(.05,(now-last)/1000);last=now;try{if(fallback){moveFallback(dt*1000);renderFallback()}else if(typeof update==='function')update(dt)}catch(e){showError(e)}try{if(!fallback&&typeof renderer!=='undefined'&&renderer&&scene&&camera)renderer.render(scene,camera)}catch(e){showError(e)}requestAnimationFrame(frame)};requestAnimationFrame(frame)}
+ function bind(){document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#start,#load');if(!b)return;e.preventDefault();e.stopPropagation();b.id==='start'?start():load()},true);document.addEventListener('pointerup',e=>{const b=e.target.closest&&e.target.closest('#start,#load');if(!b)return;e.preventDefault();e.stopPropagation();b.id==='start'?start():load()},true);addEventListener('keydown',e=>{fkeys[e.key.toLowerCase()]=true;if(e.key===' '){e.preventDefault();if(fallback)attackFallback()}if(e.key.toLowerCase()==='r'&&fallback){fwraith=fwraith>=100?0:fwraith}},true);addEventListener('keyup',e=>fkeys[e.key.toLowerCase()]=false,true);document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();fkeys[k]=true},{passive:false});b.addEventListener('pointerup',e=>{e.preventDefault();fkeys[k]=false},{passive:false});b.addEventListener('pointercancel',()=>fkeys[k])});document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();if(b.dataset.action==='attack'&&fallback)attackFallback()},{passive:false}));addEventListener('resize',()=>{if(fc){fc.width=innerWidth*devicePixelRatio;fc.height=innerHeight*devicePixelRatio;fc.style.width='100%';fc.style.height='100%';fw=innerWidth;fh=innerHeight;fc.getContext('2d').setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)}})}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();window.GilgameshEmergencyBoot={start,load};
 })();
